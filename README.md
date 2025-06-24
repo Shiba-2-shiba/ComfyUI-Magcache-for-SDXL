@@ -1,3 +1,9 @@
+The original repository supporting multiple models can be found here
+
+https://github.com/Zehong-Ma/ComfyUI-MagCache
+
+This custom node is based on that code and is designed specifically for SDXL.
+
 # ComfyUI-Magcache-for-SDXL
 
 An experimental implementation of MagCache for SDXL
