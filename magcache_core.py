@@ -1,4 +1,8 @@
-# magcache_core.py
+# magcache_core.py (修正版)
+#
+# 目的：
+# - MagCacheStateクラスを、動的にキーを処理できるように修正し、
+#   'uncond_noref'のような拡張キーでKeyErrorが発生する問題を解決する。
 
 import torch
 import numpy as np
@@ -6,7 +10,7 @@ import json
 import os
 import hashlib
 import weakref
-from comfy import model_management # CORRECTED IMPORT
+from comfy import model_management
 
 CALIBRATION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "magcache_data")
 os.makedirs(CALIBRATION_DIR, exist_ok=True)
@@ -62,27 +66,31 @@ def interpolate_mag_ratios(ratios, target_steps):
     print(f"[MagCache-SDXL] Ratios interpolated from {source_steps} to {target_steps} steps.")
     return result
 
-# 4. 状態管理クラス
+# 4. 状態管理クラス (修正箇所)
 class MagCacheState:
     def __init__(self):
-        self.state = {
-            "cond": self._create_guidance_state(),
-            "uncond": self._create_guidance_state()
-        }
+        self.state = {} # 空の辞書として初期化
         self.cache_device = model_management.get_torch_device()
 
     def _create_guidance_state(self):
+        """新しいキャッシュ状態のテンプレートを生成する"""
         return {'residual_cache': None, 'accumulated_err': 0.0, 'accumulated_steps': 0, 'accumulated_ratio': 1.0}
     
     def reset(self):
-        self.state = {
-            "cond": self._create_guidance_state(),
-            "uncond": self._create_guidance_state()
-        }
+        """すべてのキャッシュ状態をクリアする"""
+        self.state.clear()
     
     def get_state(self, guidance_type: str):
+        """
+        指定されたguidance_typeの状態を取得する。
+        存在しない場合は、その場で動的に作成する。
+        """
+        if guidance_type not in self.state:
+            self.state[guidance_type] = self._create_guidance_state()
         return self.state[guidance_type]
 
     def store_residual(self, residual_tensor: torch.Tensor, guidance_type: str):
+        """計算結果をキャッシュに保存する"""
+        # get_stateを呼び出すことで、対象のstateが確実に存在することを保証する
         state = self.get_state(guidance_type)
         state['residual_cache'] = residual_tensor.to(device=self.cache_device, copy=True)
