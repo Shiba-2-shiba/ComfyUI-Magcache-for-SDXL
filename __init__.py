@@ -1,10 +1,11 @@
-# __init__.py (パッチ適用機能付き・UNETLoader対応)
+# __init__.py (リファクタリング版)
 
 import nodes
 import comfy.sd
-from .magcache_nodes import MagCacheApply, MagCacheCalibrate
+# EasyApplyノードをインポートリストに追加
+from .magcache_nodes import MagCacheApply, MagCacheEasyApply, MagCacheCalibrate
 
-# --- ここからモンキーパッチ ---
+# --- ここからモンキーパッチ (変更なし) ---
 
 # === CheckpointLoaderSimpleのパッチ (既存のSDXL用) ===
 try:
@@ -29,10 +30,8 @@ try:
         original_load_unet = nodes.UNETLoader.load_unet
 
         def patched_load_unet(self, unet_name, weight_dtype):
-            # オリジナルのローダーを呼び出す (返り値はタプル)
             model, = original_load_unet(self, unet_name, weight_dtype)
             
-            # modelオブジェクトにファイル名を属性として追加
             if model is not None:
                 setattr(model, "magcache_source_ckpt_name", unet_name)
                 print(f"[MagCache Patcher] Attached unet name '{unet_name}' to model from UNETLoader.")
@@ -49,18 +48,21 @@ except Exception as e:
 # --- ここまでモンキーパッチ ---
 
 
-# ノード登録処理
+# --- [変更点] ノード登録処理 ---
 NODE_CLASS_MAPPINGS = {
     "MagCacheApply": MagCacheApply,
+    "MagCacheEasyApply": MagCacheEasyApply,  # EasyApplyを追加
     "MagCacheCalibrate": MagCacheCalibrate,
 }
 
+# --- [変更点] ノード表示名の定義 ---
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MagCacheApply": "MagCache Apply (SDXL/OmniGen2)",
-    "MagCacheCalibrate": "MagCache Calibrate (SDXL/OmniGen2)",
+    "MagCacheApply": "MagCache Apply (Advanced)",  # Advanced設定用であることを明記
+    "MagCacheEasyApply": "MagCache Easy Apply",      # EasyApplyの表示名を設定
+    "MagCacheCalibrate": "MagCache Calibrate (SDXL/OmniGen2)", # こちらは変更なし
 }
 
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 
-print("### MagCache for SDXL/OmniGen2 loaded ###")
+print("### MagCache for SDXL/OmniGen2 (UX Improved) loaded ###")
